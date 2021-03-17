@@ -5,81 +5,7 @@ import java.io.PrintWriter;
 import java.util.Scanner;
 
 public class Intel{
-    private static class Lista{
-        private Nodo cabeza;
-        private Nodo ultimo;
-        
-        private class Nodo{
-            private String direccion;
-            private String tipo;
-            private String valor;
-            private Nodo siguiente;
     
-            public Nodo(String direccion,String tipo,String valor){
-                this.direccion = direccion;
-                this.tipo = tipo;
-                this.valor = valor;
-                this.siguiente = null;
-            }
-    
-            public String nodoInfo(){
-                return "  0x" + direccion + "     " + tipo + "     " + valor + "\n";
-            }
-            public void imprimeNodoConsola(){
-                System.out.print(this.nodoInfo());
-            }
-        }
-
-        public Lista(){
-            this.cabeza = null;
-            this.ultimo = null;
-        }
-
-        public Lista(String direccion, String tipo, String valor){
-            this.cabeza = new Nodo(direccion,tipo,valor);
-            this.ultimo = this.cabeza;
-        }
-
-        public void agregarNodo(String direccion, String tipo, String valor){
-            Nodo nuevoNodo = new Nodo(direccion,tipo,valor);
-            if(this.cabeza == null){
-                this.cabeza = nuevoNodo;
-                this.ultimo = nuevoNodo;
-            }else{
-                this.ultimo.siguiente = nuevoNodo;
-                this.ultimo = nuevoNodo;
-            }
-        }
-
-        public void imprimeListaConsola(){
-            Nodo aux = this.cabeza;
-            System.out.println("Direccion\ttipo\tvalor");
-            while(aux != null){
-                aux.imprimeNodoConsola();
-                aux = aux.siguiente;
-            }
-        }
-        
-        public String listaInfo(){
-            Nodo aux = this.cabeza;
-            String cadena = "Direccion\ttipo\tvalor\n";
-            while(aux != null){
-                cadena += aux.nodoInfo();
-                aux = aux.siguiente;
-            }
-            return cadena;
-        }
-        
-        public void agregarLista(Lista lista){
-            if(this.cabeza == null){
-                this.cabeza = lista.cabeza;
-                this.ultimo = lista.ultimo;
-            }
-            this.ultimo.siguiente = lista.cabeza;
-            this.ultimo = lista.ultimo;
-        }
-    }
-
     public static char[] mergeArr(char[] A, char[] B){
         char[] C = new char[4];
         C[0] = A[0];
@@ -129,7 +55,6 @@ public class Intel{
 
     public static String fill(String string, int number,boolean start){
 		if(string.length() >= number) return string;
-
 		String filler = "";
 		for(int i = 0; i < number - string.length(); i++)
 			filler += "0";
@@ -137,74 +62,51 @@ public class Intel{
 		return string + filler;
 	}
 
-    public static Lista procesarLinea(String linea){
-        int tamano = (linea.length() - 5 ) / 2;
-        char[] arr = linea.toCharArray();
-        char[][] caracteres = new char[tamano][2];
-        Lista lista = new Lista();
-        for(int i = 3, j = 0; i < (linea.length() - 3 ); i += 2, j++){
-            caracteres[j][0] = arr[i];
-            caracteres[j][1] = arr[i + 1];
-        }
-        String direccionInicial = String.valueOf(mergeArr(caracteres[0],caracteres[1]));
-        String tipo = String.valueOf(caracteres[2]);
-        if(tipo.equals("00")){
-            for(int i = 3; i < tamano; i++){
-                int direccion = HextoDec(direccionInicial);
-                direccion += (i - 3);
-                String dato = String.valueOf(caracteres[i]);
-                lista.agregarNodo(fill(DectoHex(direccion),4,true),tipo,dato);
-            }
-        }else if(tipo.equals("04")){
-            String dato = String.valueOf(mergeArr(caracteres[3], caracteres[4]));
-            lista.agregarNodo(fill(direccionInicial,4,true),tipo,dato);
-        }
-        return lista;
-    }
-
-    public static Lista procesarArchivo(String nombre){
-        Lista listaCompleta = new Lista();
+    public static void main(String args[]){
+        FileWriter fichero = null;
+        PrintWriter pw = null;
         try {
-            File Archivo = new File(nombre);
+            File Archivo = new File("main.hex");
             Scanner scanner = new Scanner(Archivo);
+            fichero = new FileWriter("main.txt");
+            pw = new PrintWriter(fichero);
+            pw.println("  direccion  tipo   dato\n");
             while (scanner.hasNextLine()) {
               String linea = scanner.nextLine();
               if(linea.equals(":00000001FF"))
                 break;
-              listaCompleta.agregarLista(procesarLinea(linea));
+                int tamano = (linea.length() - 5 ) / 2;
+            char[] arr = linea.toCharArray();
+            char[][] caracteres = new char[tamano][2];
+            for(int i = 3, j = 0; i < (linea.length() - 3 ); i += 2, j++){
+                caracteres[j][0] = arr[i];
+                caracteres[j][1] = arr[i + 1];
             }
-            scanner.close();
-          } catch (FileNotFoundException e) {
-            System.err.println("El archivo no existe");
-            e.printStackTrace();
+            String direccionInicial = String.valueOf(mergeArr(caracteres[0],caracteres[1]));
+            String tipo = String.valueOf(caracteres[2]);
+            if(tipo.equals("00")){
+                for(int i = 3; i < tamano; i++){
+                    int direccion = HextoDec(direccionInicial);
+                    direccion += (i - 3);
+                    String dato = String.valueOf(caracteres[i]);
+                    pw.println("  0x" + fill(DectoHex(direccion),4,true) + "      " + tipo + "     " + dato);
+                }
+            }else if(tipo.equals("04")){
+                String dato = String.valueOf(mergeArr(caracteres[3], caracteres[4]));
+                pw.println("  0x" + direccionInicial + "      " + tipo + "     " + dato);
+            }
         }
-        return listaCompleta;
-    }
-
-    public static void escribirArchivo(String nombre,Lista datos){
-        FileWriter fichero = null;
-        PrintWriter pw = null;
-        try
-        {
-            fichero = new FileWriter(nombre);
-            pw = new PrintWriter(fichero);
-
-            pw.println(datos.listaInfo());
-
+        scanner.close();
         } catch (Exception e) {
+            System.err.println("Ha ocurrido un problema");
             e.printStackTrace();
-        } finally {
-           try {
-           if (null != fichero)
-              fichero.close();
-           } catch (Exception e2) {
-              e2.printStackTrace();
-           }
+        }finally {
+            try {
+            if (null != fichero)
+               fichero.close();
+            } catch (Exception e2) {
+               e2.printStackTrace();
+            }
         }
-    }
-
-    public static void main(String args[]){
-        Lista lista = procesarArchivo("main.hex");
-        escribirArchivo("main.txt",lista);
     }
 }
